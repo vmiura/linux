@@ -42,6 +42,8 @@ enum perf_output_field {
 	PERF_OUTPUT_DSO             = 1U << 9,
 	PERF_OUTPUT_ADDR            = 1U << 10,
 	PERF_OUTPUT_SYMOFFSET       = 1U << 11,
+	PERF_OUTPUT_SRCLINE         = 1U << 12,
+	PERF_OUTPUT_PERIOD          = 1U << 13,
 };
 
 struct output_option {
@@ -60,6 +62,8 @@ struct output_option {
 	{.str = "dso",   .field = PERF_OUTPUT_DSO},
 	{.str = "addr",  .field = PERF_OUTPUT_ADDR},
 	{.str = "symoff", .field = PERF_OUTPUT_SYMOFFSET},
+	{.str = "srcline", .field = PERF_OUTPUT_SRCLINE},
+	{.str = "period", .field = PERF_OUTPUT_PERIOD},
 };
 
 /* default set to maintain compatibility with current format */
@@ -77,7 +81,7 @@ static struct {
 		.fields = PERF_OUTPUT_COMM | PERF_OUTPUT_TID |
 			      PERF_OUTPUT_CPU | PERF_OUTPUT_TIME |
 			      PERF_OUTPUT_EVNAME | PERF_OUTPUT_IP |
-				  PERF_OUTPUT_SYM | PERF_OUTPUT_DSO,
+				  PERF_OUTPUT_SYM | PERF_OUTPUT_DSO | PERF_OUTPUT_PERIOD,
 
 		.invalid_fields = PERF_OUTPUT_TRACE,
 	},
@@ -88,7 +92,7 @@ static struct {
 		.fields = PERF_OUTPUT_COMM | PERF_OUTPUT_TID |
 			      PERF_OUTPUT_CPU | PERF_OUTPUT_TIME |
 			      PERF_OUTPUT_EVNAME | PERF_OUTPUT_IP |
-				  PERF_OUTPUT_SYM | PERF_OUTPUT_DSO,
+				  PERF_OUTPUT_SYM | PERF_OUTPUT_DSO | PERF_OUTPUT_PERIOD,
 
 		.invalid_fields = PERF_OUTPUT_TRACE,
 	},
@@ -323,6 +327,10 @@ static void print_sample_start(struct perf_sample *sample,
 		evname = perf_evsel__name(evsel);
 		printf("%s: ", evname ? evname : "[unknown]");
 	}
+
+	if (PRINT_FIELD(PERIOD)) {
+		printf("%lu ", sample->period);
+	}
 }
 
 static bool is_bts_event(struct perf_event_attr *attr)
@@ -359,6 +367,10 @@ static void print_sample_addr(union perf_event *event,
 
 	if (!sample_addr_correlates_sym(attr))
 		return;
+
+	// vmiura: HACK - resolve callchain on top level process thread.
+	if (sample->pid != sample->tid)
+		thread = machine__findnew_thread(machine, sample->pid, sample->pid);
 
 	thread__find_addr_map(thread, machine, cpumode, MAP__FUNCTION,
 			      sample->addr, &al);

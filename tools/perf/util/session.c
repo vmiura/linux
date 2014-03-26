@@ -1522,6 +1522,29 @@ void perf_evsel__print_ip(struct perf_evsel *evsel, union perf_event *event,
 		return;
 	}
 
+	if (!(al.sym && al.sym->ignore)) {
+		if (print_ip)
+			printf("%16" PRIx64, sample->ip);
+
+		if (print_sym) {
+			printf(" ");
+			if (print_symoffset)
+				symbol__fprintf_symname_offs(al.sym, &al,
+							     stdout);
+			else
+				symbol__fprintf_symname(al.sym, stdout);
+		}
+
+		if (print_dso) {
+			printf(" (");
+			map__fprintf_dsoname(al.map, stdout);
+			printf(")");
+		}
+
+		if (!print_oneline)
+				printf("\n");
+	}
+
 	if (symbol_conf.use_callchain && sample->callchain) {
 
 		if (machine__resolve_callchain(machine, evsel, al.thread,
@@ -1536,6 +1559,9 @@ void perf_evsel__print_ip(struct perf_evsel *evsel, union perf_event *event,
 			node = callchain_cursor_current(&callchain_cursor);
 			if (!node)
 				break;
+
+			if ((node->sym && node->sym->ignore) || node->ip == sample->ip)
+				goto next;
 
 			if (print_ip)
 				printf("%c%16" PRIx64, s, node->ip);
@@ -1559,28 +1585,10 @@ void perf_evsel__print_ip(struct perf_evsel *evsel, union perf_event *event,
 			if (!print_oneline)
 				printf("\n");
 
+		next:
 			callchain_cursor_advance(&callchain_cursor);
 
 			stack_depth--;
-		}
-
-	} else {
-		if (print_ip)
-			printf("%16" PRIx64, sample->ip);
-
-		if (print_sym) {
-			printf(" ");
-			if (print_symoffset)
-				symbol__fprintf_symname_offs(al.sym, &al,
-							     stdout);
-			else
-				symbol__fprintf_symname(al.sym, stdout);
-		}
-
-		if (print_dso) {
-			printf(" (");
-			map__fprintf_dsoname(al.map, stdout);
-			printf(")");
 		}
 	}
 }
