@@ -98,6 +98,14 @@ out_free_tmp:
 static struct cpu_map *cpu_map__read_all_cpu_map(void)
 {
 	struct cpu_map *cpus = NULL;
+
+#if 1
+	cpus = malloc(sizeof(*cpus) + 1 * sizeof(int));
+	if (cpus != NULL) {
+		cpus->map[0] = -1;
+		cpus->nr = 1;
+	}
+#else
 	FILE *onlnf;
 
 	onlnf = fopen("/sys/devices/system/cpu/online", "r");
@@ -106,6 +114,7 @@ static struct cpu_map *cpu_map__read_all_cpu_map(void)
 
 	cpus = cpu_map__read(onlnf);
 	fclose(onlnf);
+#endif
 	return cpus;
 }
 
