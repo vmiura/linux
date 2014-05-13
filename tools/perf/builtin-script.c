@@ -330,25 +330,25 @@ static void print_sample_start(struct perf_sample *sample,
 
 	if (PRINT_FIELD(COMM)) {
 		if (latency_format)
-			printf("%8.8s ", thread__comm_str(thread));
+			printf("%8.8s\t", thread__comm_str(thread));
 		else if (PRINT_FIELD(IP) && symbol_conf.use_callchain)
-			printf("%s ", thread__comm_str(thread));
+			printf("%s\t", thread__comm_str(thread));
 		else
-			printf("%16s ", thread__comm_str(thread));
+			printf("%16s\t", thread__comm_str(thread));
 	}
 
 	if (PRINT_FIELD(PID) && PRINT_FIELD(TID))
-		printf("%5d/%-5d ", sample->pid, sample->tid);
+		printf("%5d/%-5d\t", sample->pid, sample->tid);
 	else if (PRINT_FIELD(PID))
-		printf("%5d ", sample->pid);
+		printf("%5d\t", sample->pid);
 	else if (PRINT_FIELD(TID))
-		printf("%5d ", sample->tid);
+		printf("%5d\t", sample->tid);
 
 	if (PRINT_FIELD(CPU)) {
 		if (latency_format)
-			printf("%3d ", sample->cpu);
+			printf("%3d\t", sample->cpu);
 		else
-			printf("[%03d] ", sample->cpu);
+			printf("[%03d]\t", sample->cpu);
 	}
 
 	if (PRINT_FIELD(TIME)) {
@@ -356,11 +356,11 @@ static void print_sample_start(struct perf_sample *sample,
 		secs = nsecs / NSECS_PER_SEC;
 		nsecs -= secs * NSECS_PER_SEC;
 		usecs = nsecs / NSECS_PER_USEC;
-		printf("%5lu.%06lu: ", secs, usecs);
+		printf("%5lu.%06lu:\t", secs, usecs);
 	}
 
 	if (PRINT_FIELD(PERIOD)) {
-		printf("%lu ", sample->period);
+		printf("%lu\t", sample->period);
 	}
 }
 
