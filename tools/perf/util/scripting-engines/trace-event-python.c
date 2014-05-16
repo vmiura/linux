@@ -32,6 +32,7 @@
 #include "../event.h"
 #include "../thread.h"
 #include "../trace-event.h"
+#include "../machine.h"
 
 PyMODINIT_FUNC initperf_trace_context(void);
 
@@ -381,6 +382,73 @@ static void python_process_general_event(struct perf_sample *sample,
 			(const char *)sample, sizeof(*sample)));
 	pydict_set_item_string_decref(dict, "raw_buf", PyString_FromStringAndSize(
 			(const char *)sample->raw_data, sample->raw_size));
+	pydict_set_item_string_decref(dict, "period", PyLong_FromLongLong(sample->period));
+	pydict_set_item_string_decref(dict, "time", PyLong_FromLongLong(sample->time));
+	pydict_set_item_string_decref(dict, "pid", PyInt_FromLong(sample->pid));
+	pydict_set_item_string_decref(dict, "tid", PyInt_FromLong(sample->tid));
+	pydict_set_item_string_decref(dict, "cpu", PyInt_FromLong(sample->cpu));
+	
+	// Add callstack
+	{
+		PyObject *sym_tuple, *callstack;
+		const char *cs_name, *cs_dso;
+		callstack = PyList_New(0);
+
+
+		// Sample hit symbol
+		cs_name = "[unknown]";
+		cs_dso = "[unknown]";
+		
+		if (al->sym && al->sym->name)
+			cs_name = al->sym->name;
+
+		if (al->map && al->map->dso && al->map->dso->name)
+			cs_dso = al->map->dso->name;
+
+		sym_tuple = PyTuple_New(2);
+		PyTuple_SetItem(sym_tuple, 0, PyString_FromString(cs_name));
+		PyTuple_SetItem(sym_tuple, 1, PyString_FromString(cs_dso));
+		PyList_Append(callstack, sym_tuple);
+
+		if (sample->callchain) {
+			
+
+			if (machine__resolve_callchain(al->machine, evsel, al->thread,
+						       sample, NULL, NULL,
+						       PERF_MAX_STACK_DEPTH) == 0) {
+				struct callchain_cursor_node *node;
+				//struct addr_location node_al;
+
+				callchain_cursor_commit(&callchain_cursor);
+				node = callchain_cursor_current(&callchain_cursor);
+				while (node) {
+					if (node->ip == sample->ip)
+						goto next;
+
+					cs_name = "[unknown]";
+					cs_dso = "[unknown]";
+
+					if (node->sym && node->sym->name)
+						cs_name = node->sym->name;
+
+					if (node->map && node->map->dso->name)
+						cs_dso = node->map->dso->name;
+
+					sym_tuple = PyTuple_New(2);
+					PyTuple_SetItem(sym_tuple, 0, PyString_FromString(cs_name));
+					PyTuple_SetItem(sym_tuple, 1, PyString_FromString(cs_dso));
+					PyList_Append(callstack, sym_tuple);
+
+				next:
+					callchain_cursor_advance(&callchain_cursor);
+					node = callchain_cursor_current(&callchain_cursor);
+				}
+			}
+		}
+
+		pydict_set_item_string_decref(dict, "cs", callstack);
+	}
+
 	pydict_set_item_string_decref(dict, "comm",
 			PyString_FromString(thread__comm_str(thread)));
 	if (al->map) {
